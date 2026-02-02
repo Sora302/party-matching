@@ -9,42 +9,37 @@
       background: #f7f7f7;
       padding: 20px;
     }
-
     h1, h2 {
       text-align: center;
     }
-
+    .card {
+      background: white;
+      padding: 20px;
+      max-width: 600px;
+      margin: 20px auto;
+      border-radius: 8px;
+    }
+    button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      background: white;
     }
-
     th, td {
       border: 1px solid #ccc;
       padding: 10px;
-      text-align: left;
     }
-
     th {
       background: #eee;
     }
-
     .match {
       background-color: rgba(255, 0, 0, 0.2);
       font-weight: bold;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    button {
-      display: block;
-      margin: 30px auto;
-      padding: 10px 20px;
-      font-size: 16px;
     }
   </style>
 </head>
@@ -52,11 +47,16 @@
 
 <h1>政党マッチング診断</h1>
 
-<button onclick="showResult()">結果を見る</button>
+<!-- 質問エリア -->
+<div id="questionArea" class="card">
+  <h2 id="questionText"></h2>
+  <div id="options"></div>
+  <button onclick="nextQuestion()">次へ</button>
+</div>
 
-<div id="result" class="hidden">
+<!-- 結果エリア -->
+<div id="resultArea" class="card" style="display:none;">
   <h2 id="partyName"></h2>
-
   <table>
     <thead>
       <tr>
@@ -70,80 +70,102 @@
 </div>
 
 <script>
-  // ====== ① カテゴリ一覧 ======
-  const categories = [
-    "経済",
-    "財政",
-    "社会保障",
-    "エネルギー",
-    "外交",
-    "安保",
-    "家族",
-    "子育て",
-    "農政",
-    "外国人政策",
-    "政治改革"
+  // ===== 質問データ =====
+  const questions = [
+    {
+      category: "経済",
+      text: "景気対策として、今すぐ減税を行うべきだと思いますか？",
+      options: [
+        "今すぐ減税すべき",
+        "状況を見ながら判断",
+        "減税には慎重"
+      ]
+    },
+    {
+      category: "エネルギー",
+      text: "将来のエネルギー政策として、あなたの考えに近いものは？",
+      options: [
+        "再生可能エネルギー中心",
+        "原発を活用すべき",
+        "どちらも必要"
+      ]
+    }
   ];
 
-  // ====== ② 仮の「一番近かった政党」 ======
+  // ===== 仮の政党データ =====
   const matchedParty = {
     name: "チームみらい",
     policies: {
-      経済: "今すぐ減税",
-      財政: "無駄な歳出削減",
-      社会保障: "現役世代重視",
-      エネルギー: "再生可能エネルギー推進",
-      外交: "現実的な対話外交",
-      安保: "専守防衛",
-      家族: "選択的家族観",
-      子育て: "子育て支援強化",
-      農政: "中小農家支援",
-      外国人政策: "段階的受け入れ",
-      政治改革: "透明性の強化"
+      経済: "今すぐ減税すべき",
+      エネルギー: "原発を活用すべき"
     }
   };
 
-  // ====== ③ あなたの回答（仮） ======
-  const userAnswers = {
-    経済: "今すぐ減税",
-    財政: "無駄な歳出削減",
-    社会保障: "現役世代重視",
-    エネルギー: "原発は必要",
-    外交: "現実的な対話外交",
-    安保: "専守防衛",
-    家族: "多様な家族を認める",
-    子育て: "子育て支援強化",
-    農政: "中小農家支援",
-    外国人政策: "慎重に受け入れ",
-    政治改革: "透明性の強化"
-  };
+  let currentQuestionIndex = 0;
+  const userAnswers = {};
 
-  // ====== ④ 結果表示 ======
+  function showQuestion() {
+    const q = questions[currentQuestionIndex];
+    document.getElementById("questionText").textContent = q.text;
+
+    const optionsDiv = document.getElementById("options");
+    optionsDiv.innerHTML = "";
+
+    q.options.forEach(option => {
+      const label = document.createElement("label");
+      label.style.display = "block";
+      label.innerHTML = `
+        <input type="radio" name="answer" value="${option}">
+        ${option}
+      `;
+      optionsDiv.appendChild(label);
+    });
+  }
+
+  function nextQuestion() {
+    const selected = document.querySelector('input[name="answer"]:checked');
+    if (!selected) {
+      alert("選択してください");
+      return;
+    }
+
+    const q = questions[currentQuestionIndex];
+    userAnswers[q.category] = selected.value;
+    currentQuestionIndex++;
+
+    if (currentQuestionIndex < questions.length) {
+      showQuestion();
+    } else {
+      showResult();
+    }
+  }
+
   function showResult() {
-    document.getElementById("result").classList.remove("hidden");
+    document.getElementById("questionArea").style.display = "none";
+    document.getElementById("resultArea").style.display = "block";
     document.getElementById("partyName").textContent =
       `あなたに最も近い政党：${matchedParty.name}`;
 
     const table = document.getElementById("resultTable");
     table.innerHTML = "";
 
-    categories.forEach(category => {
-      const partyPolicy = matchedParty.policies[category];
-      const userAnswer = userAnswers[category];
-
+    questions.forEach(q => {
+      const partyPolicy = matchedParty.policies[q.category];
+      const userAnswer = userAnswers[q.category];
       const isMatch = partyPolicy === userAnswer;
 
       const tr = document.createElement("tr");
-
       tr.innerHTML = `
-        <td>${category}</td>
+        <td>${q.category}</td>
         <td class="${isMatch ? "match" : ""}">${partyPolicy}</td>
         <td class="${isMatch ? "match" : ""}">${userAnswer}</td>
       `;
-
       table.appendChild(tr);
     });
   }
+
+  // 最初の質問を表示
+  showQuestion();
 </script>
 
 </body>
